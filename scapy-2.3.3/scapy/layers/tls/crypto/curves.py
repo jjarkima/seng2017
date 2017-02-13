@@ -1,7 +1,7 @@
-## This file is part of Scapy
-## See http://www.secdev.org/projects/scapy for more informations
-## Copyright (C) 2016 Pascal Delaunay, Maxence Tury
-## This program is published under a GPLv2 license
+# This file is part of Scapy
+# See http://www.secdev.org/projects/scapy for more informations
+# Copyright (C) 2016 Pascal Delaunay, Maxence Tury
+# This program is published under a GPLv2 license
 
 """
 Implicit elliptic curves.
@@ -29,16 +29,17 @@ def encode_point(point, point_format=0):
     Return a string representation of the Point p, according to point_format.
     """
     pLen = len(binrepr(point.curve().p()))
-    x = pkcs_i2osp(point.x(), math.ceil(pLen/8))
-    y = pkcs_i2osp(point.y(), math.ceil(pLen/8))
+    x = pkcs_i2osp(point.x(), math.ceil(pLen / 8))
+    y = pkcs_i2osp(point.y(), math.ceil(pLen / 8))
     if point_format == 0:
         frmt = '\x04'
     elif point_format == 1:
-        frmt = chr(2 + y%2)
+        frmt = chr(2 + y % 2)
         y = ''
     else:
         raise Exception("No support for point_format %d" % point_format)
     return frmt + x + y
+
 
 def extract_coordinates(g, curve):
     """
@@ -53,15 +54,15 @@ def extract_coordinates(g, curve):
         point_len = len(point)
         if point_len % 2 != 0:
             raise Exception("Point length is not even.")
-        x_bytes = point[:point_len>>1]
+        x_bytes = point[:point_len >> 1]
         x = pkcs_os2ip(x_bytes) % p
-        y_bytes = point[point_len>>1:]
+        y_bytes = point[point_len >> 1:]
         y = pkcs_os2ip(y_bytes) % p
     elif point_format in ['\x02', '\x03']:
         x_bytes = point
         x = pkcs_os2ip(x_bytes) % p
         # perform the y coordinate computation with self.tls_ec
-        y_square = (x*x*x + curve.a()*x + curve.b()) % p
+        y_square = (x * x * x + curve.a() * x + curve.b()) % p
         y = square_root_mod_prime(y_square, p)
         y_parity = ord(point_format) % 2    # \x02 means even, \x03 means odd
         if y % 2 != y_parity:
@@ -72,6 +73,7 @@ def extract_coordinates(g, curve):
     if not curve.contains_point(x, y):
         raise Exception("The point we extracted does not belong on the curve!")
     return x, y
+
 
 def import_curve(p, a, b, g, r, name="dummyName", oid=(1, 3, 132, 0, 0xff)):
     """
@@ -101,22 +103,22 @@ def import_curve(p, a, b, g, r, name="dummyName", oid=(1, 3, 132, 0, 0xff)):
 
 _p          = long_converter("""
               ffffffff ffffffff ffffffff fffffffe ffffac73""")
-_a          = 0
-_b          = 7
+_a = 0
+_b = 7
 _Gx         = long_converter("""
               3b4c382c e37aa192 a4019e76 3036f4f5 dd4d7ebb""")
 _Gy         = long_converter("""
               938cf935 318fdced 6bc28286 531733c3 f03c4fee""")
 _r          = long_converter("""01
               00000000 00000000 0001b8fa 16dfab9a ca16b6b3""")
-curve       = CurveFp(_p, _a, _b)
-generator   = Point(curve, _Gx, _Gy, _r)
-SECP160k1   = Curve("SECP160k1", curve, generator,
-                    (1, 3, 132, 0, 9), "secp160k1")
+curve = CurveFp(_p, _a, _b)
+generator = Point(curve, _Gx, _Gy, _r)
+SECP160k1 = Curve("SECP160k1", curve, generator,
+                  (1, 3, 132, 0, 9), "secp160k1")
 
 _p          = long_converter("""
               ffffffff ffffffff ffffffff ffffffff 7fffffff""")
-_a          = -3 % _p
+_a = -3 % _p
 _b          = long_converter("""
               1c97befc 54bd7a8b 65acf89f 81d4d4ad c565fa45""")
 _Gx         = long_converter("""
@@ -125,14 +127,14 @@ _Gy         = long_converter("""
               23a62855 3168947d 59dcc912 04235137 7ac5fb32""")
 _r          = long_converter("""01
               00000000 00000000 0001f4c8 f927aed3 ca752257""")
-curve       = CurveFp(_p, _a, _b)
-generator   = Point(curve, _Gx, _Gy, _r)
-SECP160r1   = Curve("SECP160r1", curve, generator,
-                    (1, 3, 132, 0, 8), "secp160r1")
+curve = CurveFp(_p, _a, _b)
+generator = Point(curve, _Gx, _Gy, _r)
+SECP160r1 = Curve("SECP160r1", curve, generator,
+                  (1, 3, 132, 0, 8), "secp160r1")
 
 _p          = long_converter("""
               ffffffff ffffffff ffffffff fffffffe ffffac73""")
-_a          = -3 % _p
+_a = -3 % _p
 _b          = long_converter("""
               b4e134d3 fb59eb8b ab572749 04664d5a f50388ba""")
 _Gx         = long_converter("""
@@ -141,29 +143,29 @@ _Gy         = long_converter("""
               feaffef2 e331f296 e071fa0d f9982cfe a7d43f2e""")
 _r          = long_converter("""01
               00000000 00000000 0000351e e786a818 f3a1a16b""")
-curve       = CurveFp(_p, _a, _b)
-generator   = Point(curve, _Gx, _Gy, _r)
-SECP160r2   = Curve("SECP160r2", curve, generator,
-                    (1, 3, 132, 0, 30), "secp160r2")
+curve = CurveFp(_p, _a, _b)
+generator = Point(curve, _Gx, _Gy, _r)
+SECP160r2 = Curve("SECP160r2", curve, generator,
+                  (1, 3, 132, 0, 30), "secp160r2")
 
 _p          = long_converter("""
               ffffffff ffffffff ffffffff ffffffff fffffffe ffffee37""")
-_a          = 0
-_b          = 3
+_a = 0
+_b = 3
 _Gx         = long_converter("""
               db4ff10e c057e9ae 26b07d02 80b7f434 1da5d1b1 eae06c7d""")
 _Gy         = long_converter("""
               9b2f2f6d 9c5628a7 844163d0 15be8634 4082aa88 d95e2f9d""")
 _r          = long_converter("""
               ffffffff ffffffff fffffffe 26f2fc17 0f69466a 74defd8d""")
-curve       = CurveFp(_p, _a, _b)
-generator   = Point(curve, _Gx, _Gy, _r)
-SECP192k1   = Curve("SECP192k1", curve, generator,
-                    (1, 3, 132, 0, 31), "secp192k1")
+curve = CurveFp(_p, _a, _b)
+generator = Point(curve, _Gx, _Gy, _r)
+SECP192k1 = Curve("SECP192k1", curve, generator,
+                  (1, 3, 132, 0, 31), "secp192k1")
 
 _p          = long_converter("""
               ffffffff ffffffff ffffffff fffffffe ffffffff ffffffff""")
-_a          = -3 % _p
+_a = -3 % _p
 _b          = long_converter("""
               64210519 e59c80e7 0fa7e9ab 72243049 feb8deec c146b9b1""")
 _Gx         = long_converter("""
@@ -172,16 +174,16 @@ _Gy         = long_converter("""
               07192b95 ffc8da78 631011ed 6b24cdd5 73f977a1 1e794811""")
 _r          = long_converter("""
               ffffffff ffffffff ffffffff 99def836 146bc9b1 b4d22831""")
-curve       = CurveFp(_p, _a, _b)
-generator   = Point(curve, _Gx, _Gy, _r)
-SECP192r1   = Curve("SECP192r1", curve, generator,
-                    (1, 2, 840, 10045, 3, 1, 1), "prime192v1")
+curve = CurveFp(_p, _a, _b)
+generator = Point(curve, _Gx, _Gy, _r)
+SECP192r1 = Curve("SECP192r1", curve, generator,
+                  (1, 2, 840, 10045, 3, 1, 1), "prime192v1")
 
 _p          = long_converter("""
               ffffffff ffffffff ffffffff ffffffff ffffffff fffffffe
               ffffe56d""")
-_a          = 0
-_b          = 5
+_a = 0
+_b = 5
 _Gx         = long_converter("""
               a1455b33 4df099df 30fc28a1 69a467e9 e47075a9 0f7e650e
               b6b7a45c""")
@@ -191,15 +193,15 @@ _Gy         = long_converter("""
 _r          = long_converter("""01
               00000000 00000000 00000000 0001dce8 d2ec6184 caf0a971
               769fb1f7""")
-curve       = CurveFp(_p, _a, _b)
-generator   = Point(curve, _Gx, _Gy, _r)
-SECP224k1   = Curve("SECP224k1", curve, generator,
-                    (1, 3, 132, 0, 32), "secp224k1")
+curve = CurveFp(_p, _a, _b)
+generator = Point(curve, _Gx, _Gy, _r)
+SECP224k1 = Curve("SECP224k1", curve, generator,
+                  (1, 3, 132, 0, 32), "secp224k1")
 
 _p          = long_converter("""
               ffffffff ffffffff ffffffff ffffffff 00000000 00000000
               00000001""")
-_a          = -3 % _p
+_a = -3 % _p
 _b          = long_converter("""
               b4050a85 0c04b3ab f5413256 5044b0b7 d7bfd8ba 270b3943
               2355ffb4""")
@@ -212,17 +214,17 @@ _Gy         = long_converter("""
 _r          = long_converter("""
               ffffffff ffffffff ffffffff ffff16a2 e0b8f03e 13dd2945
               5c5c2a3d""")
-curve       = CurveFp(_p, _a, _b)
-generator   = Point(curve, _Gx, _Gy, _r)
-SECP224r1   = Curve("SECP224r1", curve, generator,
-                    (1, 3, 132, 0, 33), "secp224r1")
+curve = CurveFp(_p, _a, _b)
+generator = Point(curve, _Gx, _Gy, _r)
+SECP224r1 = Curve("SECP224r1", curve, generator,
+                  (1, 3, 132, 0, 33), "secp224r1")
 
 # (already defined as SECP256k1 by python-ecdsa)
 _p          = long_converter("""
               ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff
               fffffffe fffffc2f""")
-_a          = 0
-_b          = 7
+_a = 0
+_b = 7
 _Gx         = long_converter("""
               79be667e f9dcbbac 55a06295 ce870b07 029bfcdb 2dce28d9
               59f2815b 16f81798""")
@@ -232,15 +234,15 @@ _Gy         = long_converter("""
 _r          = long_converter("""
               ffffffff ffffffff ffffffff fffffffe baaedce6 af48a03b
               bfd25e8c d0364141""")
-curve       = CurveFp(_p, _a, _b)
-generator   = Point(curve, _Gx, _Gy, _r)
-SECP256k1   = Curve("SECP256k1", curve, generator,
-                    (1, 3, 132, 0, 10), "secp256k1")
+curve = CurveFp(_p, _a, _b)
+generator = Point(curve, _Gx, _Gy, _r)
+SECP256k1 = Curve("SECP256k1", curve, generator,
+                  (1, 3, 132, 0, 10), "secp256k1")
 
 _p          = long_converter("""
               ffffffff 00000001 00000000 00000000 00000000 ffffffff
               ffffffff ffffffff""")
-_a          = -3 % _p
+_a = -3 % _p
 _b          = long_converter("""
               5ac635d8 aa3a93e7 b3ebbd55 769886bc 651d06b0 cc53b0f6
               3bce3c3e 27d2604b""")
@@ -253,15 +255,15 @@ _Gy         = long_converter("""
 _r          = long_converter("""
               ffffffff 00000000 ffffffff ffffffff bce6faad a7179e84
               f3b9cac2 fc632551""")
-curve       = CurveFp(_p, _a, _b)
-generator   = Point(curve, _Gx, _Gy, _r)
-SECP256r1   = Curve("SECP256r1", curve, generator,
-                    (1, 2, 840, 10045, 3, 1, 7), "prime256v1")
+curve = CurveFp(_p, _a, _b)
+generator = Point(curve, _Gx, _Gy, _r)
+SECP256r1 = Curve("SECP256r1", curve, generator,
+                  (1, 2, 840, 10045, 3, 1, 7), "prime256v1")
 
 _p          = long_converter("""
               ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff
               ffffffff fffffffe ffffffff 00000000 00000000 ffffffff""")
-_a          = -3 % _p
+_a = -3 % _p
 _b          = long_converter("""
               b3312fa7 e23ee7e4 988e056b e3f82d19 181d9c6e fe814112
               0314088f 5013875a c656398d 8a2ed19d 2a85c8ed d3ec2aef""")
@@ -274,16 +276,16 @@ _Gy         = long_converter("""
 _r          = long_converter("""
               ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff
               c7634d81 f4372ddf 581a0db2 48b0a77a ecec196a ccc52973""")
-curve       = CurveFp(_p, _a, _b)
-generator   = Point(curve, _Gx, _Gy, _r)
-SECP384r1   = Curve("SECP384r1", curve, generator,
-                    (1, 3, 132, 0, 34), "secp384r1")
+curve = CurveFp(_p, _a, _b)
+generator = Point(curve, _Gx, _Gy, _r)
+SECP384r1 = Curve("SECP384r1", curve, generator,
+                  (1, 3, 132, 0, 34), "secp384r1")
 
 _p          = long_converter("""
                   01ff ffffffff ffffffff ffffffff ffffffff ffffffff
               ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff
               ffffffff ffffffff ffffffff ffffffff ffffffff""")
-_a          = -3 % _p
+_a = -3 % _p
 _b          = long_converter("""
                   0051 953eb961 8e1c9a1f 929a21a0 b68540ee a2da725b
               99b315f3 b8b48991 8ef109e1 56193951 ec7e937b 1652c0bd
@@ -300,10 +302,10 @@ _r          = long_converter("""
                   01ff ffffffff ffffffff ffffffff ffffffff ffffffff
               ffffffff ffffffff fffffffa 51868783 bf2f966b 7fcc0148
               f709a5d0 3bb5c9b8 899c47ae bb6fb71e 91386409""")
-curve       = CurveFp(_p, _a, _b)
-generator   = Point(curve, _Gx, _Gy, _r)
-SECP521r1   = Curve("SECP521r1", curve, generator,
-                    (1, 3, 132, 0, 35), "secp521r1")
+curve = CurveFp(_p, _a, _b)
+generator = Point(curve, _Gx, _Gy, _r)
+SECP521r1 = Curve("SECP521r1", curve, generator,
+                  (1, 3, 132, 0, 35), "secp521r1")
 
 _p          = long_converter("""
               A9FB57DB A1EEA9BC 3E660A90 9D838D72 6E3BF623 D5262028
@@ -323,10 +325,10 @@ _Gy         = long_converter("""
 _r          = long_converter("""
               A9FB57DB A1EEA9BC 3E660A90 9D838D71 8C397AA3 B561A6F7
               901E0E82 974856A7""")
-curve       = CurveFp(_p, _a, _b)
-generator   = Point(curve, _Gx, _Gy, _r)
-BRNP256r1   = Curve("BRNP256r1", curve, generator,
-                    (1, 3, 36, 3, 3, 2, 8, 1, 1, 7), "brainpoolP256r1")
+curve = CurveFp(_p, _a, _b)
+generator = Point(curve, _Gx, _Gy, _r)
+BRNP256r1 = Curve("BRNP256r1", curve, generator,
+                  (1, 3, 36, 3, 3, 2, 8, 1, 1, 7), "brainpoolP256r1")
 
 _p          = long_converter("""
               8CB91E82 A3386D28 0F5D6F7E 50E641DF 152F7109 ED5456B4
@@ -346,10 +348,10 @@ _Gy         = long_converter("""
 _r          = long_converter("""
               8CB91E82 A3386D28 0F5D6F7E 50E641DF 152F7109 ED5456B3
               1F166E6C AC0425A7 CF3AB6AF 6B7FC310 3B883202 E9046565""")
-curve       = CurveFp(_p, _a, _b)
-generator   = Point(curve, _Gx, _Gy, _r)
-BRNP384r1   = Curve("BRNP384r1", curve, generator,
-                    (1, 3, 36, 3, 3, 2, 8, 1, 1, 11), "brainpoolP384r1")
+curve = CurveFp(_p, _a, _b)
+generator = Point(curve, _Gx, _Gy, _r)
+BRNP384r1 = Curve("BRNP384r1", curve, generator,
+                  (1, 3, 36, 3, 3, 2, 8, 1, 1, 11), "brainpoolP384r1")
 
 _p          = long_converter("""
               AADD9DB8 DBE9C48B 3FD4E6AE 33C9FC07 CB308DB3 B3C9D20E
@@ -375,27 +377,27 @@ _r          = long_converter("""
               AADD9DB8 DBE9C48B 3FD4E6AE 33C9FC07 CB308DB3 B3C9D20E
               D6639CCA 70330870 553E5C41 4CA92619 41866119 7FAC1047
               1DB1D381 085DDADD B5879682 9CA90069""")
-curve       = CurveFp(_p, _a, _b)
-generator   = Point(curve, _Gx, _Gy, _r)
-BRNP512r1   = Curve("BRNP512r1", curve, generator,
-                    (1, 3, 36, 3, 3, 2, 8, 1, 1, 13), "brainpoolP512r1")
+curve = CurveFp(_p, _a, _b)
+generator = Point(curve, _Gx, _Gy, _r)
+BRNP512r1 = Curve("BRNP512r1", curve, generator,
+                  (1, 3, 36, 3, 3, 2, 8, 1, 1, 13), "brainpoolP512r1")
 
 # we use IANA identifiers below
-named_curves = { 15: SECP160k1,
-                 16: SECP160r1,
-                 17: SECP160r2,
-                 18: SECP192k1,
-                 19: SECP192r1,
-                 20: SECP224k1,
-                 21: SECP224r1,
-                 22: SECP256k1,
-                 23: SECP256r1,
-                 24: SECP384r1,
-                 25: SECP521r1,
-                 26: BRNP256r1,
-                 27: BRNP384r1,
-                 28: BRNP512r1
-               }
+named_curves = {15: SECP160k1,
+                16: SECP160r1,
+                17: SECP160r2,
+                18: SECP192k1,
+                19: SECP192r1,
+                20: SECP224k1,
+                21: SECP224r1,
+                22: SECP256k1,
+                23: SECP256r1,
+                24: SECP384r1,
+                25: SECP521r1,
+                26: BRNP256r1,
+                27: BRNP384r1,
+                28: BRNP512r1
+                }
 
 for cid, c in named_curves.iteritems():
     c.curve_id = cid
@@ -403,4 +405,3 @@ for cid, c in named_curves.iteritems():
 # replace/fill previous named curves
 import ecdsa.curves
 ecdsa.curves.curves = named_curves.values()
-

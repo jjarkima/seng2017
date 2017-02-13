@@ -1,20 +1,25 @@
-## This file is part of Scapy
-## See http://www.secdev.org/projects/scapy for more informations
-## Copyright (C) Philippe Biondi <phil@secdev.org>
-## This program is published under a GPLv2 license
+# This file is part of Scapy
+# See http://www.secdev.org/projects/scapy for more informations
+# Copyright (C) Philippe Biondi <phil@secdev.org>
+# This program is published under a GPLv2 license
 
 """
 Customizations needed to support Microsoft Windows.
 """
 
 from __future__ import with_statement
-import os,re,sys,socket,time, itertools
+import os
+import re
+import sys
+import socket
+import time
+import itertools
 import subprocess as sp
 from glob import glob
 import tempfile
 
-from scapy.config import conf,ConfClass
-from scapy.error import Scapy_Exception,log_loading,log_runtime
+from scapy.config import conf, ConfClass
+from scapy.error import Scapy_Exception, log_loading, log_runtime
 from scapy.utils import atol, itom, inet_aton, inet_ntoa, PcapReader
 from scapy.base_classes import Gen, Net, SetGen
 import scapy.plist as plist
@@ -25,14 +30,14 @@ conf.use_dnet = False
 conf.use_winpcapy = True
 
 
-#hot-patching socket for missing variables on Windows
+# hot-patching socket for missing variables on Windows
 import socket
 if not hasattr(socket, 'IPPROTO_IPIP'):
-    socket.IPPROTO_IPIP=4
+    socket.IPPROTO_IPIP = 4
 if not hasattr(socket, 'IPPROTO_AH'):
-    socket.IPPROTO_AH=51
+    socket.IPPROTO_AH = 51
 if not hasattr(socket, 'IPPROTO_ESP'):
-    socket.IPPROTO_ESP=50
+    socket.IPPROTO_ESP = 50
 
 
 from scapy.arch import pcapdnet
@@ -40,20 +45,22 @@ from scapy.arch.pcapdnet import *
 
 WINDOWS = True
 
+
 def _exec_query_ps(cmd, fields):
     """Execute a PowerShell query"""
     ps = sp.Popen([conf.prog.powershell] + cmd +
                   ['|', 'select %s' % ', '.join(fields), '|', 'fl'],
                   stdout=sp.PIPE,
                   universal_newlines=True)
-    l=[]
+    l = []
     for line in ps.stdout:
-        if not line.strip(): #skip empty lines
+        if not line.strip():  # skip empty lines
             continue
         l.append(line.split(':', 1)[1].strip())
         if len(l) == len(fields):
             yield l
-            l=[]
+            l = []
+
 
 def _vbs_exec_code(code):
     tmpfile = tempfile.NamedTemporaryFile(suffix=".vbs", delete=False)
@@ -69,6 +76,7 @@ def _vbs_exec_code(code):
         yield line
     os.unlink(tmpfile.name)
 
+
 def _vbs_get_iface_guid(devid):
     try:
         devid = str(int(devid) + 1)
@@ -80,7 +88,7 @@ def _vbs_get_iface_guid(devid):
         pass
 
 # Some names differ between VBS and PS
-## None: field will not be returned under VBS
+# None: field will not be returned under VBS
 _VBS_WMI_FIELDS = {
     "Win32_NetworkAdapter": {
         "InterfaceIndex": "Index",
@@ -94,6 +102,7 @@ _VBS_WMI_OUTPUT = {
         "DeviceID": _vbs_get_iface_guid,
     }
 }
+
 
 def _exec_query_vbs(cmd, fields):
     """Execute a query using VBS. Currently Get-WmiObject queries are
@@ -117,6 +126,7 @@ Next
                    values.next().strip()
                )
                for fld in fields]
+
 
 def exec_query(cmd, fields):
     """Execute a system query using PowerShell if it is available, and
@@ -143,25 +153,27 @@ def _where(filename, dirs=None, env="PATH"):
                 return os.path.normpath(match)
     raise IOError("File not found: %s" % filename)
 
+
 def win_find_exe(filename, installsubdir=None, env="ProgramFiles"):
     """Find executable in current dir, system path or given ProgramFiles subdir"""
-    for fn in [filename, filename+".exe"]:
+    for fn in [filename, filename + ".exe"]:
         try:
             if installsubdir is None:
                 path = _where(fn)
             else:
-                path = _where(fn, dirs=[os.path.join(os.environ[env], installsubdir)])
+                path = _where(fn, dirs=[os.path.join(
+                    os.environ[env], installsubdir)])
         except IOError:
             path = filename
         else:
-            break        
+            break
     return path
 
 
 class WinProgPath(ConfClass):
     _default = "<System default>"
     # We try some magic to find the appropriate executables
-    pdfreader = win_find_exe("AcroRd32") 
+    pdfreader = win_find_exe("AcroRd32")
     psreader = win_find_exe("gsview32.exe", "Ghostgum/gsview")
     dot = win_find_exe("dot", "ATT/Graphviz/bin")
     tcpdump = win_find_exe("windump")
@@ -181,18 +193,22 @@ conf.prog = WinProgPath()
 if conf.prog.powershell == "powershell":
     conf.prog.powershell = None
 
+
 class PcapNameNotFoundError(Scapy_Exception):
-    pass    
+    pass
 import platform
+
 
 def is_interface_valid(iface):
     if "guid" in iface and iface["guid"]:
         return True
     return False
 
+
 def get_windows_if_list():
-    if platform.release()=="post2008Server" or platform.release()=="8":
-        # This works only starting from Windows 8/2012 and up. For older Windows another solution is needed
+    if platform.release() == "post2008Server" or platform.release() == "8":
+        # This works only starting from Windows 8/2012 and up. For older
+        # Windows another solution is needed
         query = exec_query(['Get-NetAdapter'],
                            ['Name', 'InterfaceIndex', 'InterfaceDescription',
                             'InterfaceGuid', 'MacAddress'])
@@ -207,16 +223,18 @@ def get_windows_if_list():
         if is_interface_valid(iface)
     ]
 
+
 def get_ip_from_name(ifname, v6=False):
     for descr, ipaddr in exec_query(['Get-WmiObject',
                                      'Win32_NetworkAdapterConfiguration'],
                                     ['Description', 'IPAddress']):
         if descr == ifname.strip():
             return ipaddr.split(",", 1)[v6].strip('{}').strip()
-        
+
+
 class NetworkInterface(object):
     """A network interface of your local host"""
-    
+
     def __init__(self, data=None):
         self.name = None
         self.ip = None
@@ -243,7 +261,7 @@ class NetworkInterface(object):
 
         try:
             if not self.ip:
-                self.ip=get_ip_from_name(data['name'])
+                self.ip = get_ip_from_name(data['name'])
         except (KeyError, AttributeError, NameError) as e:
             print e
         try:
@@ -264,8 +282,10 @@ class NetworkInterface(object):
 
 from UserDict import UserDict
 
+
 class NetworkInterfaceDict(UserDict):
-    """Store information about network interfaces and convert between names""" 
+    """Store information about network interfaces and convert between names"""
+
     def load_from_powershell(self):
         for i in get_windows_if_list():
             try:
@@ -273,7 +293,7 @@ class NetworkInterfaceDict(UserDict):
                 self.data[interface.guid] = interface
             except (KeyError, PcapNameNotFoundError):
                 pass
-        
+
         if len(self.data) == 0:
             log_loading.warning("No match between your pcap and windows network interfaces found. "
                                 "You probably won't be able to send packets. "
@@ -313,16 +333,17 @@ class NetworkInterfaceDict(UserDict):
             if resolve_mac:
                 mac = conf.manufdb._resolve_MAC(mac)
             print "%s  %s  %s  %s" % (str(dev.win_index).ljust(5), str(dev.name).ljust(35), str(dev.ip).ljust(15), mac)
-            
+
 IFACES = NetworkInterfaceDict()
 IFACES.load_from_powershell()
+
 
 def pcapname(dev):
     """Return pypcap device name for given interface or libdnet/Scapy
     device name.
 
     """
-    if type(dev) is NetworkInterface:
+    if isinstance(dev, NetworkInterface):
         return dev.pcap_name
     try:
         return IFACES.dev_from_name(dev).pcap_name
@@ -331,26 +352,32 @@ def pcapname(dev):
         # iface=None
         return None
 
+
 def dev_from_pcapname(pcap_name):
     """Return libdnet/Scapy device name for given pypcap device name"""
     return IFACES.dev_from_pcapname(pcap_name)
 
+
 def dev_from_index(if_index):
     """Return Windows adapter name for given Windows interface index"""
     return IFACES.dev_from_index(if_index)
-    
+
+
 def show_interfaces(resolve_mac=True):
     """Print list of available network interfaces"""
     return IFACES.show(resolve_mac)
 
 _orig_open_pcap = pcapdnet.open_pcap
-pcapdnet.open_pcap = lambda iface,*args,**kargs: _orig_open_pcap(pcapname(iface),*args,**kargs)
+pcapdnet.open_pcap = lambda iface, * \
+    args, **kargs: _orig_open_pcap(pcapname(iface), *args, **kargs)
 
 _orig_get_if_raw_hwaddr = pcapdnet.get_if_raw_hwaddr
 pcapdnet.get_if_raw_hwaddr = lambda iface, *args, **kargs: (
-    ARPHDR_ETHER, IFACES.dev_from_pcapname(iface.pcap_name).mac.replace(':', '').decode('hex')
+    ARPHDR_ETHER, IFACES.dev_from_pcapname(
+        iface.pcap_name).mac.replace(':', '').decode('hex')
 )
 get_if_raw_hwaddr = pcapdnet.get_if_raw_hwaddr
+
 
 def read_routes_xp():
     # The InterfaceIndex in Win32_IP4RouteTable does not match the
@@ -379,8 +406,9 @@ def read_routes_xp():
             routes.append((dst, mask, gw, iface, iface.ip))
     return routes
 
+
 def read_routes_7():
-    routes=[]
+    routes = []
     for line in exec_query(['Get-WmiObject', 'win32_IP4RouteTable'],
                            ['Name', 'Mask', 'NextHop', 'InterfaceIndex']):
         try:
@@ -389,6 +417,7 @@ def read_routes_7():
             continue
         routes.append((atol(line[0]), atol(line[1]), line[2], iface, iface.ip))
     return routes
+
 
 def read_routes():
     routes = []
@@ -400,13 +429,15 @@ def read_routes():
             routes = read_routes_xp()
         else:
             routes = read_routes_7()
-    except Exception as e:    
-        log_loading.warning("Error building scapy routing table : %s"%str(e))
+    except Exception as e:
+        log_loading.warning("Error building scapy routing table : %s" % str(e))
     else:
         if not routes:
-            log_loading.warning("No default IPv4 routes found. Your Windows release may no be supported and you have to enter your routes manually")
+            log_loading.warning(
+                "No default IPv4 routes found. Your Windows release may no be supported and you have to enter your routes manually")
     return routes
-       
+
+
 def read_routes_post2008():
     # XXX TODO: FIX THIS XXX
     routes = []
@@ -417,11 +448,13 @@ def read_routes_post2008():
     delim = "\s+"        # The columns are separated by whitespace
     netstat_line = delim.join([if_index, dest, next_hop, metric_pattern])
     pattern = re.compile(netstat_line)
-    # This works only starting from Windows 8/2012 and up. For older Windows another solution is needed
-    ps = sp.Popen([conf.prog.powershell, 'Get-NetRoute', '-AddressFamily IPV4', '|', 'select ifIndex, DestinationPrefix, NextHop, RouteMetric'], stdout = sp.PIPE, universal_newlines = True)
+    # This works only starting from Windows 8/2012 and up. For older Windows
+    # another solution is needed
+    ps = sp.Popen([conf.prog.powershell, 'Get-NetRoute', '-AddressFamily IPV4', '|',
+                   'select ifIndex, DestinationPrefix, NextHop, RouteMetric'], stdout=sp.PIPE, universal_newlines=True)
     stdout, stdin = ps.communicate()
     for l in stdout.split('\n'):
-        match = re.search(pattern,l)
+        match = re.search(pattern, l)
         if match:
             try:
                 iface = dev_from_index(match.group(1))
@@ -431,10 +464,11 @@ def read_routes_post2008():
             #     intf = pcapdnet.dnet.intf().get_dst(pcapdnet.dnet.addr(type=2, addrtxt=dest))
             # except OSError:
             #     log_loading.warning("Building Scapy's routing table: Couldn't get outgoing interface for destination %s" % dest)
-            #     continue               
+            #     continue
             routes.append((atol(match.group(2)), itom(int(match.group(3))),
                            match.group(4), iface, iface.ip))
     return routes
+
 
 def read_routes6():
     return []
@@ -447,11 +481,13 @@ if conf.interactive_shell != 'ipython':
             import readline
             console = readline.GetOutputFile()
         except (ImportError, AttributeError):
-            log_loading.info("Could not get readline console. Will not interpret ANSI color codes.") 
+            log_loading.info(
+                "Could not get readline console. Will not interpret ANSI color codes.")
         else:
             conf.readfunc = readline.rl.readline
             orig_stdout = sys.stdout
             sys.stdout = console
+
 
 def get_working_if():
     try:

@@ -1,32 +1,34 @@
-## This file is part of Scapy
-## Copyright (C) 2008 Arnaud Ebalard <arnaud.ebalard@eads.net>
-##                                   <arno@natisbad.org>
-##         2015, 2016 Maxence Tury   <maxence.tury@ssi.gouv.fr>
-## This program is published under a GPLv2 license
+# This file is part of Scapy
+# Copyright (C) 2008 Arnaud Ebalard <arnaud.ebalard@eads.net>
+# <arno@natisbad.org>
+# 2015, 2016 Maxence Tury   <maxence.tury@ssi.gouv.fr>
+# This program is published under a GPLv2 license
 
 """
 High-level methods for PKI objects (X.509 certificates, CRLs, asymmetric keys).
 Supports both RSA and ECDSA objects.
 """
 
-## This module relies on python-crypto and python-ecdsa.
+# This module relies on python-crypto and python-ecdsa.
 ##
-## The classes below are wrappers for the ASN.1 objects defined in x509.py.
-## By collecting their attributes, we bypass the ASN.1 structure, hence
-## there is no direct method for exporting a new full DER-encoded version
-## of a Cert instance after its serial has been modified (for example).
-## If you need to modify an import, just use the corresponding ASN1_Packet.
+# The classes below are wrappers for the ASN.1 objects defined in x509.py.
+# By collecting their attributes, we bypass the ASN.1 structure, hence
+# there is no direct method for exporting a new full DER-encoded version
+# of a Cert instance after its serial has been modified (for example).
+# If you need to modify an import, just use the corresponding ASN1_Packet.
 ##
-## For instance, here is what you could do in order to modify the serial of
-## 'cert' and then resign it with whatever 'key':
+# For instance, here is what you could do in order to modify the serial of
+# 'cert' and then resign it with whatever 'key':
 ##     f = open('cert.der')
 ##     c = X509_Cert(f.read())
 ##     c.tbsCertificate.serialNumber = 0x4B1D
 ##     k = PrivKey('key.pem')
 ##     new_x509_cert = k.resignCert(c)
-## No need for obnoxious openssl tweaking anymore. :)
+# No need for obnoxious openssl tweaking anymore. :)
 
-import base64, os, time
+import base64
+import os
+import time
 
 import ecdsa
 from Crypto.PublicKey import RSA
@@ -47,9 +49,9 @@ from scapy.utils import binrepr
 
 # Maximum allowed size in bytes for a certificate file, to avoid
 # loading huge file when importing a cert
-MAX_KEY_SIZE = 50*1024
-MAX_CERT_SIZE = 50*1024
-MAX_CRL_SIZE = 10*1024*1024   # some are that big
+MAX_KEY_SIZE = 50 * 1024
+MAX_CERT_SIZE = 50 * 1024
+MAX_CRL_SIZE = 10 * 1024 * 1024   # some are that big
 
 
 #####################################################################
@@ -62,10 +64,12 @@ def der2pem(der_string, obj="UNKNOWN"):
     """
     pem_string = "-----BEGIN %s-----\n" % obj
     base64_string = base64.b64encode(der_string)
-    chunks = [base64_string[i:i+64] for i in range(0, len(base64_string), 64)]
+    chunks = [base64_string[i:i + 64]
+              for i in range(0, len(base64_string), 64)]
     pem_string += '\n'.join(chunks)
     pem_string += "\n-----END %s-----\n" % obj
     return pem_string
+
 
 def pem2der(pem_string):
     """
@@ -80,6 +84,7 @@ def pem2der(pem_string):
     base64_string.replace("\n", "")
     der_string = base64.b64decode(base64_string)
     return der_string
+
 
 def split_pem(s):
     """
@@ -98,6 +103,7 @@ def split_pem(s):
 
 
 class _PKIObj(object):
+
     def __init__(self, frmt, der, pem):
         # Note that changing attributes of the _PKIObj does not update these
         # values (e.g. modifying k.modulus does not change k.der).
@@ -110,6 +116,7 @@ class _PKIObj(object):
 
 
 class _PKIObjMaker(type):
+
     def __call__(cls, obj_path, obj_max_size, pem_marker=None):
         # This enables transparent DER and PEM-encoded data imports.
         # Note that when importing a PEM file with multiple objects (like ECDSA
@@ -239,14 +246,17 @@ class PubKeyRSA(_PKIObj, PubKey, _EncryptAndVerifyRSA):
     Wrapper for RSA keys based on _EncryptAndVerifyRSA from crypto/pkcs1.py
     Use the 'key' attribute to access original object.
     """
+
     def updateWith(self, pubkey):
-        self.modulus    = pubkey.modulus.val
+        self.modulus = pubkey.modulus.val
         self.modulusLen = len(binrepr(pubkey.modulus.val))
-        self.pubExp     = pubkey.publicExponent.val
+        self.pubExp = pubkey.publicExponent.val
         self.key = RSA.construct((self.modulus, self.pubExp, ))
+
     def encrypt(self, msg, t=None, h=None, mgf=None, L=None):
         # no ECDSA encryption support, hence no ECDSA specific keywords here
         return _EncryptAndVerifyRSA.encrypt(self, msg, t=t, h=h, mgf=mgf, L=L)
+
     def verify(self, msg, sig, h=None,
                t=None, mgf=None, sLen=None,
                sigdecode=None):
@@ -259,10 +269,11 @@ class PubKeyECDSA(_PKIObj, PubKey):
     Wrapper for ECDSA keys based on VerifyingKey from ecdsa library.
     Use the 'key' attribute to access original object.
     """
+
     def updateWith(self, spki):
         # For now we use from_der() or from_string() methods,
         # which do not offer support for compressed points.
-        #XXX Try using the from_public_point() method.
+        # XXX Try using the from_public_point() method.
         try:
             self.key = ecdsa.VerifyingKey.from_der(str(spki))
             # from_der() raises an exception on explicit curves
@@ -275,9 +286,11 @@ class PubKeyECDSA(_PKIObj, PubKey):
                              p.base.val,
                              p.order.val)
             self.key = ecdsa.VerifyingKey.from_string(s, c)
+
     def encrypt(self, msg, t=None, h=None, mgf=None, L=None):
         # python-ecdsa does not support encryption
         raise Exception("No ECDSA encryption support")
+
     def verify(self, msg, sig, h=None,
                t=None, mgf=None, sLen=None,
                sigdecode=ecdsa.util.sigdecode_string):
@@ -386,23 +399,26 @@ class PrivKeyRSA(_PKIObj, PrivKey, _EncryptAndVerifyRSA, _DecryptAndSignRSA):
     Wrapper for RSA keys based on _DecryptAndSignRSA from crypto/pkcs1.py
     Use the 'key' attribute to access original object.
     """
+
     def updateWith(self, privkey):
-        self.modulus     = privkey.modulus.val
-        self.modulusLen  = len(binrepr(privkey.modulus.val))
-        self.pubExp      = privkey.publicExponent.val
-        self.privExp     = privkey.privateExponent.val
-        self.prime1      = privkey.prime1.val
-        self.prime2      = privkey.prime2.val
-        self.exponent1   = privkey.exponent1.val
-        self.exponent2   = privkey.exponent2.val
+        self.modulus = privkey.modulus.val
+        self.modulusLen = len(binrepr(privkey.modulus.val))
+        self.pubExp = privkey.publicExponent.val
+        self.privExp = privkey.privateExponent.val
+        self.prime1 = privkey.prime1.val
+        self.prime2 = privkey.prime2.val
+        self.exponent1 = privkey.exponent1.val
+        self.exponent2 = privkey.exponent2.val
         self.coefficient = privkey.coefficient.val
         self.key = RSA.construct((self.modulus, self.pubExp, self.privExp))
+
     def verify(self, msg, sig, h=None,
                t=None, mgf=None, sLen=None,
                sigdecode=None):
         # Let's copy this from PubKeyRSA instead of adding another baseclass :)
         return _EncryptAndVerifyRSA.verify(self, msg, sig, h=h,
                                            t=t, mgf=mgf, sLen=sLen)
+
     def sign(self, data, h=None,
              t=None, mgf=None, sLen=None,
              k=None, entropy=None, sigencode=None):
@@ -415,15 +431,18 @@ class PrivKeyECDSA(_PKIObj, PrivKey):
     Wrapper for ECDSA keys based on SigningKey from ecdsa library.
     Use the 'key' attribute to access original object.
     """
+
     def updateWith(self, privkey):
         self.privKey = pkcs_os2ip(privkey.privateKey.val)
         self.key = ecdsa.SigningKey.from_der(str(privkey))
         self.vkey = self.key.get_verifying_key()
+
     def verify(self, msg, sig, h=None,
                t=None, mgf=None, sLen=None,
                sigdecode=None):
         return self.vkey.verify(sig, msg, hashfunc=mapHashFunc(h),
                                 sigdecode=sigdecode)
+
     def sign(self, data, h=None,
              t=None, mgf=None, sLen=None,
              k=None, entropy=None, sigencode=ecdsa.util.sigencode_string):
@@ -583,7 +602,7 @@ class Cert(_PKIObj):
 
         now = time.mktime(now)
         nft = time.mktime(self.notAfter)
-        diff = (nft - now)/(24.*3600)
+        diff = (nft - now) / (24. * 3600)
         return diff
 
     def isRevoked(self, crl_list):
@@ -605,12 +624,12 @@ class Cert(_PKIObj):
         for c in crl_list:
             if (self.authorityKeyID is not None and
                 c.authorityKeyID is not None and
-                self.authorityKeyID == c.authorityKeyID):
+                    self.authorityKeyID == c.authorityKeyID):
                 return self.serial in map(lambda x: x[0],
-                                                    c.revoked_cert_serials)
+                                          c.revoked_cert_serials)
             elif self.issuer == c.issuer:
                 return self.serial in map(lambda x: x[0],
-                                                    c.revoked_cert_serials)
+                                          c.revoked_cert_serials)
         return False
 
     def export(self, filename, fmt="DER"):
@@ -752,6 +771,7 @@ class Chain(list):
     """
     Basically, an enhanced array of Cert.
     """
+
     def __init__(self, certList, cert0=None):
         """
         Construct a chain of certificates starting with a self-signed
@@ -881,9 +901,8 @@ class Chain(list):
         idx = 1
         while idx <= llen:
             c = self[idx]
-            s += "%s\_ %s" % (" "*idx*2, c.subject_str)
+            s += "%s\_ %s" % (" " * idx * 2, c.subject_str)
             if idx != llen:
                 s += "\n"
             idx += 1
         return s
-
